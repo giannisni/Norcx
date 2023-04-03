@@ -4,7 +4,7 @@
         <progressDir>./progress</progressDir>
         <workDir>./work</workDir>
         <logsLevel>info</logsLevel>
-        <maxPerRun>-1</maxPerRun>
+            <maxPerRun>-1</maxPerRun>
         <userAgent>Norconex Web Crawler</userAgent>
         <defaultIgnoreRobotsTxt>false</defaultIgnoreRobotsTxt>
         <defaultIgnoreSitemap>false</defaultIgnoreSitemap>

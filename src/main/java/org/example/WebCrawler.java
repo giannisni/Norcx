@@ -19,11 +19,11 @@ public class WebCrawler {
 
         String folderPath = "./examples-output/complex";
         File folder = new File(folderPath);
-        try {
-            deleteFolder(folder);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            deleteFolder(folder);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
         collector.start();
     }
 
