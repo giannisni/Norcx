@@ -1,0 +1,54 @@
+<config>
+    <collector id="WebCrawler">
+        <logsDir>./logs</logsDir>
+        <progressDir>./progress</progressDir>
+        <workDir>./work</workDir>
+        <logsLevel>info</logsLevel>
+        <maxPerRun>-1</maxPerRun>
+        <userAgent>Norconex Web Crawler</userAgent>
+        <defaultIgnoreRobotsTxt>false</defaultIgnoreRobotsTxt>
+        <defaultIgnoreSitemap>false</defaultIgnoreSitemap>
+        <crawlDelay>1000</crawlDelay>
+    </collector>
+    <crawler>
+        <id>example-crawler</id>
+        <startURLs>
+            <url>https://edition.cnn.com/2023/03/23/tech/tiktok-ceo-hearing/index.html</url>
+        </startURLs>
+        <ignoreRobotsTxt>false</ignoreRobotsTxt>
+        <ignoreSitemap>false</ignoreSitemap>
+        <userAgent>Norconex Web Crawler</userAgent>
+        <crawlDelay>1000</crawlDelay>
+        <maxDepth>-1</maxDepth>
+        <validStatusCodes>200,201,202,203,204,205,206,207,208,226,300,301,302,303,304,305,306,307,308</validStatusCodes>
+        <cookiesDisabled>false</cookiesDisabled>
+        <transformer>
+            <id>external_transformer</id>
+            <type>external</type>
+            <command>python3</command>
+            <argument>scripts/sentiment_analysis.py</argument>
+            <inputField>document.content</inputField>
+            <outputField>sentiment_score</outputField>
+            <catchOutput>true</catchOutput>
+            <onError>ignore</onError>
+        </transformer>
+    </crawler>
+    <committer>
+        <id>elasticsearch</id>
+        <type>elasticsearch</type>
+        <url>http://localhost:9200</url>
+        <indexName>your_index_name</indexName>
+        <settings>
+            <index>
+                <number_of_shards>1</number_of_shards>
+                <number_of_replicas>0</number_of_replicas>
+            </index>
+        </settings>
+        <fieldMapping>
+            <field name="reference" target="url" />
+            <field name="title" source="document.title" />
+            <field name="content" source="document.content" />
+            <field name="sentiment_score" source="sentiment_score" />
+        </fieldMapping>
+    </committer>
+</config>
