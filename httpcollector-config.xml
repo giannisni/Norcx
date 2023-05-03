@@ -5,7 +5,7 @@
            you may not use this file except in compliance with the License.
            You may obtain a copy of the License at
 
-               http://www.apache.org/licenses/LICENSE-2.0
+               https://www.apache.org/licenses/LICENSE-2.0
 
            Unless required by applicable law or agreed to in writing, software
            distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,6 +40,14 @@
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
             <documentFilters>
+<!--                <filter-->
+<!--                        class="ReferenceFilter"-->
+<!--                        onMatch="exclude">-->
+<!--                    <valueMatcher-->
+<!--                            method="regex">-->
+<!--                        https://www.athensvoice.gr/tags/.*-->
+<!--                    </valueMatcher>-->
+<!--                </filter>-->
 
                 <filter
                         class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
@@ -54,6 +62,18 @@
             <importer>
 
                 <preParseHandlers>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DOMTagger">
+                        <dom selector="time[itemprop='datePublished']" extract="attr(datetime)" toField="published_date"   onSet="replace"/>
+                    </handler>
+
+
+<!--                    <handler class="com.norconex.importer.handler.tagger.impl.DOMTagger">-->
+<!--                        <dom-->
+<!--                                selector="time"-->
+<!--                                toField="published_date"/>-->
+
+<!--                    </handler>-->
                     <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
                         <script><![CDATA[
                         var referenceField = "document.reference";
@@ -66,51 +86,79 @@
                         }
                       ]]>
                         </script>
+
+
                     </handler>
-<!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
-<!--                        <fieldMatcher>-->
-<!--                            temp.url-->
-<!--                        </fieldMatcher>-->
-<!--                        <pattern-->
-<!--                                toField="domain.url"-->
-<!--                                valueGroup="1">-->
-<!--                            (https?://[^/]+)-->
-<!--                        </pattern>-->
-<!--                    </handler>-->
+
+
+                    <handler
+                            class="DeleteTagger">
+                        <fieldMatcher
+                                method="basic">
+                            collector.referrer-link-attr
+                        </fieldMatcher>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
                 </preParseHandlers>
 
                 <postParseHandlers>
                     <!-- Keep only specific fields -->
 
-                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
-                        <restrictTo>
-                            <fieldMatcher method="csv">content</fieldMatcher>
-                            <valueMatcher method="regex">.*</valueMatcher>
-                        </restrictTo>
-                        <command>python3 scripts/sentiment_analysis.py</command>
-                        <metadata inputFormat="properties" outputFormat="properties">
-                            <pattern toField="sentiment_score" onSet="replace">
-                                (.*)
-                            </pattern>
-                        </metadata>
-                    </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                    <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
-                    </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
-                    </handler>
 
-<!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
-<!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
-<!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
-<!--                        <replacement><![CDATA[$1]]></replacement>-->
-<!--                        <toField>published_date_single</toField>-->
+<!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+<!--                                                                <fieldMatcher>-->
+<!--                                                                    published_date-->
+<!--                                                                </fieldMatcher>-->
+<!--                                                                <pattern-->
+<!--                                                                        toField="published_date2"-->
+<!--                                                                        valueGroup="1">-->
+<!--                                                                    ^((\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)((-(\d{2}):(\d{2})|Z)?)$)-->
+<!--                                                                </pattern>-->
+<!--                                                            </handler>-->
+
+
+                    <!--                    <filter-->
+<!--                            class="com.norconex.collector.core.filter.impl.MetadataFilter"-->
+<!--                            onMatch="exclude">-->
+<!--                        <fieldMatcher-->
+<!--                                field="document.reference"-->
+<!--                                type="regex"-->
+<!--                                operation="equals"-->
+<!--                                caseSensitive="false"-->
+<!--                                value="https://www.athensvoice.gr/tags.*"-->
+<!--                                onMatch="exclude" />-->
+<!--                    </filter>-->
+
+
+
+<!--                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"-->
+<!--                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >-->
+<!--                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>-->
 <!--                    </handler>-->
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="published_date" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ss'Z'</fromFormat>
+
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
                     <handler class="KeepOnlyTagger">
                         <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
                     </handler>
@@ -123,8 +171,9 @@
                 <committer
                         class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
                     <nodes>
-                       http://localhost:9200
+                        http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -144,7 +193,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>4</numThreads> <q></q>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -191,27 +240,38 @@
                 <postParseHandlers>
                     <!-- Keep only specific fields -->
 
-                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
-                        <restrictTo>
-                            <fieldMatcher method="csv">content</fieldMatcher>
-                            <valueMatcher method="regex">.*</valueMatcher>
-                        </restrictTo>
-                        <command>python3 scripts/sentiment_analysis.py</command>
-                        <metadata inputFormat="properties" outputFormat="properties">
-                            <pattern toField="sentiment_score" onSet="replace">
-                                (.*)
-                            </pattern>
-                        </metadata>
+<!--                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">-->
+<!--                        <restrictTo>-->
+<!--                            <fieldMatcher method="csv">content</fieldMatcher>-->
+<!--                            <valueMatcher method="regex">.*</valueMatcher>-->
+<!--                        </restrictTo>-->
+<!--                        <command>python3 scripts/sentiment_analysis.py</command>-->
+<!--                        <metadata inputFormat="properties" outputFormat="properties">-->
+<!--                            <pattern toField="sentiment_score" onSet="replace">-->
+<!--                                (.*)-->
+<!--                            </pattern>-->
+<!--                        </metadata>-->
+<!--                    </handler>-->
+
+<!--                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"  onSet="replace"  fromField="last-modified" fromLocale="el_GR"  toLocale="el_GR"-->
+<!--                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss">-->
+<!--                        <fromFormat>EEE, dd MMM yyyy HH:mm:ss zzz</fromFormat>-->
+<!--                    </handler>-->
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"
+                            fromField="last-modified"
+                            toField="published_date"
+                            toFormat="yyyy-MM-dd'T'HH:mm:ss">
+                        <fromFormat>EEE, dd MMM yyyy HH:mm:ss zzz</fromFormat>
                     </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
-                    </handler>
-
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    <handler class="com.norconex.importer.handler.tagger.impl.DeleteTagger">
+                        <fieldMatcher method="basic">
+                            collector.referrer-link-attr
+                        </fieldMatcher>
+                        <fieldMatcher method="basic">
+                            referrer-link-attr
+                        </fieldMatcher>
                     </handler>
 
                     <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
@@ -224,7 +284,6 @@
                         <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
                     </handler>
 
-
                 </postParseHandlers>
             </importer>
             <!--  Decide what to do with your files by specifying a Committer.  -->
@@ -234,6 +293,7 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -343,6 +403,7 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -452,6 +513,7 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -503,16 +565,16 @@
                       ]]>
                         </script>
                     </handler>
-                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
-                    <!--                        <fieldMatcher>-->
-                    <!--                            temp.url-->
-                    <!--                        </fieldMatcher>-->
-                    <!--                        <pattern-->
-                    <!--                                toField="domain.url"-->
-                    <!--                                valueGroup="1">-->
-                    <!--                            (https?://[^/]+)-->
-                    <!--                        </pattern>-->
-                    <!--                    </handler>-->
+                                        <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">
+                                            <fieldMatcher>
+                                                temp.url
+                                            </fieldMatcher>
+                                            <pattern
+                                                    toField="domain.url"
+                                                    valueGroup="1">
+                                                (https?://[^/]+)
+                                            </pattern>
+                                        </handler>
                 </preParseHandlers>
 
                 <postParseHandlers>
@@ -561,6 +623,7 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -599,6 +662,17 @@
             <importer>
 
                 <preParseHandlers>
+
+                    <handler class="DeleteTagger">
+                                            <fieldMatcher
+                                                    method="basic">
+                                                collector.referrer-link-attr
+                                            </fieldMatcher>
+                                            <fieldMatcher
+                                                    method="basic">
+                                                referrer-link-attr
+                                            </fieldMatcher>
+                    </handler>
                     <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
                         <script><![CDATA[
                         var referenceField = "document.reference";
@@ -612,6 +686,8 @@
                       ]]>
                         </script>
                     </handler>
+
+
                     <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
                     <!--                        <fieldMatcher>-->
                     <!--                            temp.url-->
@@ -627,27 +703,52 @@
                 <postParseHandlers>
                     <!-- Keep only specific fields -->
 
-                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
-                        <restrictTo>
-                            <fieldMatcher method="csv">content</fieldMatcher>
-                            <valueMatcher method="regex">.*</valueMatcher>
-                        </restrictTo>
-                        <command>python3 scripts/sentiment_analysis.py</command>
-                        <metadata inputFormat="properties" outputFormat="properties">
-                            <pattern toField="sentiment_score" onSet="replace">
-                                (.*)
-                            </pattern>
-                        </metadata>
+<!--                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">-->
+<!--                        <restrictTo>-->
+<!--                            <fieldMatcher method="csv">content</fieldMatcher>-->
+<!--                            <valueMatcher method="regex">.*</valueMatcher>-->
+<!--                        </restrictTo>-->
+<!--                        <command>python3 scripts/sentiment_analysis.py</command>-->
+<!--                        <metadata inputFormat="properties" outputFormat="properties">-->
+<!--                            <pattern toField="sentiment_score" onSet="replace">-->
+<!--                                (.*)-->
+<!--                            </pattern>-->
+<!--                        </metadata>-->
+<!--                    </handler>-->
+
+
+
+                    <handler
+                            class="com.norconex.importer.handler.tagger.impl.RegexTagger"
+                            sourceCharset="UTF-8">
+
+                        <pattern
+                                toField="published_date"
+                                valueGroup="0"
+                                ignoreCase="false"
+                                ignoreDiacritic="false"
+                                multiline="true">
+                            (Δευτέρα|Τρίτη|Τετάρτη|Πέμπτη|Παρασκευή|Σάββατο|Κυριακή), \d{1,2}-\p{L}+-\d{4} \d{2}:\d{2}
+                        </pattern>
                     </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
-                    </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+
+
+
+
+
+
+
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"-->
+<!--                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >-->
+<!--                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>-->
+<!--                    </handler>-->
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="published_date" fromLocale="el_GR"  toLocale="el_GR"
                              toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                        <fromFormat>EEEE, dd-MMM-yyyy HH:mm</fromFormat>
+
                     </handler>
 
                     <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
@@ -670,6 +771,8 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -779,6 +882,8 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -817,6 +922,13 @@
             <importer>
 
                 <preParseHandlers>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DOMTagger">
+                        <dom
+                                selector="time"
+                                toField="published_date"/>
+
+                    </handler>
                     <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
                         <script><![CDATA[
                         var referenceField = "document.reference";
@@ -845,28 +957,38 @@
                 <postParseHandlers>
                     <!-- Keep only specific fields -->
 
-                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
-                        <restrictTo>
-                            <fieldMatcher method="csv">content</fieldMatcher>
-                            <valueMatcher method="regex">.*</valueMatcher>
-                        </restrictTo>
-                        <command>python3 scripts/sentiment_analysis.py</command>
-                        <metadata inputFormat="properties" outputFormat="properties">
-                            <pattern toField="sentiment_score" onSet="replace">
-                                (.*)
-                            </pattern>
-                        </metadata>
-                    </handler>
+<!--                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">-->
+<!--                        <restrictTo>-->
+<!--                            <fieldMatcher method="csv">content</fieldMatcher>-->
+<!--                            <valueMatcher method="regex">.*</valueMatcher>-->
+<!--                        </restrictTo>-->
+<!--                        <command>python3 scripts/sentiment_analysis.py</command>-->
+<!--                        <metadata inputFormat="properties" outputFormat="properties">-->
+<!--                            <pattern toField="sentiment_score" onSet="replace">-->
+<!--                                (.*)-->
+<!--                            </pattern>-->
+<!--                        </metadata>-->
+<!--                    </handler>-->
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
-                    </handler>
-
+<!--                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"-->
+<!--                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >-->
+<!--                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>-->
+<!--                    </handler>-->
+                    <handler class="com.norconex.importer.handler.tagger.impl.DeleteTagger">
+                                            <fieldMatcher method="basic">
+                                                collector.referrer-link-attr
+                                            </fieldMatcher>
+                                            <fieldMatcher method="basic">
+                                                referrer-link-attr
+                                            </fieldMatcher>
+                                        </handler>
                     <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
                              toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+<!--                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>-->
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssZ</fromFormat>
+
                     </handler>
+
 
                     <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
                     <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
@@ -888,6 +1010,8 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -907,14 +1031,13 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>5</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
             <documentFilters>
 
-                <filter
-                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                <filter class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
                     png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
                 </filter>
             </documentFilters>
@@ -954,27 +1077,38 @@
                 <postParseHandlers>
                     <!-- Keep only specific fields -->
 
-                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
-                        <restrictTo>
-                            <fieldMatcher method="csv">content</fieldMatcher>
-                            <valueMatcher method="regex">.*</valueMatcher>
-                        </restrictTo>
-                        <command>python3 scripts/sentiment_analysis.py</command>
-                        <metadata inputFormat="properties" outputFormat="properties">
-                            <pattern toField="sentiment_score" onSet="replace">
-                                (.*)
-                            </pattern>
-                        </metadata>
-                    </handler>
+<!--                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">-->
+<!--                        <restrictTo>-->
+<!--                            <fieldMatcher method="csv">content</fieldMatcher>-->
+<!--                            <valueMatcher method="regex">.*</valueMatcher>-->
+<!--                        </restrictTo>-->
+<!--                        <command>python3 scripts/sentiment_analysis.py</command>-->
+<!--                        <metadata inputFormat="properties" outputFormat="properties">-->
+<!--                            <pattern toField="sentiment_score" onSet="replace">-->
+<!--                                (.*)-->
+<!--                            </pattern>-->
+<!--                        </metadata>-->
+<!--                    </handler>-->
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DeleteTagger">
+                                            <fieldMatcher method="basic">
+                                                collector.referrer-link-attr
+                                            </fieldMatcher>
+                                            <fieldMatcher method="basic">
+                                                referrer-link-attr
+                                            </fieldMatcher>
+                                        </handler>
 
                     <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
                              toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
                         <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
                     </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="Last-Modified" fromLocale="el_GR"  toLocale="el_GR"
                              toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
                         <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                        <fromFormat>EEE, dd MMM yyyy HH:mm:ss zzz</fromFormat>
+
                     </handler>
 
                     <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
@@ -997,6 +1131,8 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -1063,35 +1199,82 @@
                 <postParseHandlers>
                     <!-- Keep only specific fields -->
 
-                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
-                        <restrictTo>
-                            <fieldMatcher method="csv">content</fieldMatcher>
-                            <valueMatcher method="regex">.*</valueMatcher>
-                        </restrictTo>
-                        <command>python3 scripts/sentiment_analysis.py</command>
-                        <metadata inputFormat="properties" outputFormat="properties">
-                            <pattern toField="sentiment_score" onSet="replace">
-                                (.*)
-                            </pattern>
-                        </metadata>
+<!--                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">-->
+<!--                        <restrictTo>-->
+<!--                            <fieldMatcher method="csv">content</fieldMatcher>-->
+<!--                            <valueMatcher method="regex">.*</valueMatcher>-->
+<!--                        </restrictTo>-->
+<!--                        <command>python3 scripts/sentiment_analysis.py</command>-->
+<!--                        <metadata inputFormat="properties" outputFormat="properties">-->
+<!--                            <pattern toField="sentiment_score" onSet="replace">-->
+<!--                                (.*)-->
+<!--                            </pattern>-->
+<!--                        </metadata>-->
+<!--                    </handler>-->
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DeleteTagger">
+                                            <fieldMatcher method="basic">
+                                                collector.referrer-link-attr
+                                            </fieldMatcher>
+                                            <fieldMatcher method="basic">
+                                                referrer-link-attr
+                                            </fieldMatcher>
+                                        </handler>
+
+<!--                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"-->
+<!--                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >-->
+<!--                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>-->
+<!--                    </handler>-->
+
+
+                                        <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">
+                                                                                    <fieldMatcher>
+                                                                                        published_date
+                                                                                    </fieldMatcher>
+                                                                                    <pattern
+                                                                                            toField="published_date2"
+                                                                                            valueGroup="1">
+                                                                                        ^((\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)((-(\d{2}):(\d{2})|Z)?)$)
+                                                                                    </pattern>
+                                                                                </handler>
+
+
+                    <handler
+                            class="com.norconex.importer.handler.tagger.impl.DOMTagger">
+                        <dom
+                                selector="time.authoring__time"
+                                toField="published_date"
+                                extract="text" />
                     </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
-                    </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
-                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
-                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
-                    </handler>
+<!--                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="Last-Modified" fromLocale="el_GR"  toLocale="el_GR"-->
+<!--                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >-->
+<!--&lt;!&ndash;                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>&ndash;&gt;-->
+<!--                        <fromFormat>EEE, dd MMM yyyy HH:mm:ss zzz</fromFormat>-->
 
-                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
-                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
-                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
-                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
-                    <!--                        <toField>published_date_single</toField>-->
-                    <!--                    </handler>-->
+<!--                    </handler>-->
+
+                                        <handler
+                                                class="com.norconex.importer.handler.tagger.impl.RegexTagger"
+                                                sourceCharset="UTF-8">
+
+                                            <pattern
+                                                    toField="published_date"
+                                                    valueGroup="0"
+                                                    ignoreCase="false"
+                                                    ignoreDiacritic="false"
+                                                    multiline="true">
+                                                (\d{1,2})\s(Απριλίου|Φεβρουαρίου|Ιανουαρίου|Μαρτίου|Μαΐου|Ιουνίου|Ιουλίου|Αυγούστου|Σεπτεμβρίου|Οκτωβρίου|Νοεμβρίου|Δεκεμβρίου)\s(\d{4})\s-\s(\d{2}:\d{2})
+                                            </pattern>
+                                        </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="published_date" fromLocale="el_GR"  toLocale="el_GR"
+                                                 toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+<!--                                            <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>-->
+                        <fromFormat>d MMMM yyyy - HH:mm</fromFormat>
+
+                    </handler>
                     <handler class="KeepOnlyTagger">
                         <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
                     </handler>
@@ -1106,6 +1289,7 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -1197,6 +1381,15 @@
                         <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
                     </handler>
 
+                    <handler class="com.norconex.importer.handler.tagger.impl.DeleteTagger">
+                        <fieldMatcher method="basic">
+                            collector.referrer-link-attr
+                        </fieldMatcher>
+                        <fieldMatcher method="basic">
+                            referrer-link-attr
+                        </fieldMatcher>
+                    </handler>
+
                     <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
                     <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
                     <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
@@ -1217,13 +1410,15 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
+
                     <indexName>norconex2</indexName>
 
                 </committer>
 
             </committers>
         </crawler>
-        <crawler id="enikos">
+       <crawler id="enikos">
             <!--  Requires at least one start URL (or urlsFile).
                        Optionally limit crawling to same protocol/domain/port as
                        start URLs.  -->
@@ -1242,7 +1437,7 @@
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
-            <documentFilters>
+            <documentFilters>                                                                                   
 
                 <filter
                         class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
@@ -1328,13 +1523,14 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
 
             </committers>
         </crawler>
-        <crawler id="efsyn">
+        <crawler id="0000000000000000000000000000000000000000000000033333333333333000000002">
             <!--  Requires at least one start URL (or urlsFile).
                        Optionally limit crawling to same protocol/domain/port as
                        start URLs.  -->
@@ -1395,28 +1591,69 @@
                 <postParseHandlers>
                     <!-- Keep only specific fields -->
 
-                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
-                        <restrictTo>
-                            <fieldMatcher method="csv">content</fieldMatcher>
-                            <valueMatcher method="regex">.*</valueMatcher>
-                        </restrictTo>
-                        <command>python3 scripts/sentiment_analysis.py</command>
-                        <metadata inputFormat="properties" outputFormat="properties">
-                            <pattern toField="sentiment_score" onSet="replace">
-                                (.*)
-                            </pattern>
-                        </metadata>
-                    </handler>
+<!--                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">-->
+<!--                        <restrictTo>-->
+<!--                            <fieldMatcher method="csv">content</fieldMatcher>-->
+<!--                            <valueMatcher method="regex">.*</valueMatcher>-->
+<!--                        </restrictTo>-->
+<!--                        <command>python3 scripts/sentiment_analysis.py</command>-->
+<!--                        <metadata inputFormat="properties" outputFormat="properties">-->
+<!--                            <pattern toField="sentiment_score" onSet="replace">-->
+<!--                                (.*)-->
+<!--                            </pattern>-->
+<!--                        </metadata>-->
+<!--                    </handler>-->
 
+                    <handler
+                            class="com.norconex.importer.handler.tagger.impl.RegexTagger"
+                            sourceCharset="UTF-8">
+
+                        <pattern
+                                toField="published_date"
+                                valueGroup="0"
+                                ignoreCase="false"
+                                ignoreDiacritic="false"
+                                multiline="true">
+                            (\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2})
+                        </pattern>
+                    </handler>
                     <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
                              toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
                         <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                        <fromFormat>dd.mm.yyyy, hh:mm</fromFormat>
+
                     </handler>
 
-                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="Last-Modified" fromLocale="el_GR"  toLocale="el_GR"
                              toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
                         <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                        <fromFormat>EEE, dd MMM yyyy HH:mm:ss zzz</fromFormat>
+                        <fromFormat>dd.mm.yyyy, hh:mm</fromFormat>
+
+
                     </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="published_date" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+
+                        <fromFormat>dd.mm.yyyy, hh:mm</fromFormat>
+
+
+                    </handler>
+
+                                        <handler class="com.norconex.importer.handler.tagger.impl.DeleteTagger">
+                                            <fieldMatcher method="basic">
+                                                collector.referrer-link-attr
+                                            </fieldMatcher>
+                                            <fieldMatcher method="basic">
+                                                referrer-link-attr
+                                            </fieldMatcher>
+                                        </handler>
+
+
+
+
+
 
                     <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
                     <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
@@ -1424,9 +1661,24 @@
                     <!--                        <replacement><![CDATA[$1]]></replacement>-->
                     <!--                        <toField>published_date_single</toField>-->
                     <!--                    </handler>-->
-                    <handler class="KeepOnlyTagger">
-                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script>
+                                            <![CDATA[
+                            var publishedDates = metadata.getStrings("published_date");
+                            if (publishedDates != null && publishedDates.size() > 0) {
+                                metadata.setString("published_date", publishedDates.get(0));
+                            }
+                        ]]>
+                        </script>
                     </handler>
+
+                    <handler class="KeepOnlyTagger">
+                            <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+
 
 
                 </postParseHandlers>
@@ -1438,6 +1690,7 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
                     <indexName>norconex2</indexName>
 
                 </committer>
@@ -1468,6 +1721,13 @@
                         class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
                     png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
                 </filter>
+
+<!--                <filter-->
+<!--                        class="com.norconex.collector.core.filter.impl.MetadataFilter"-->
+<!--                        onMatch="exclude">-->
+<!--                    <fieldMatcher>published_date</fieldMatcher>-->
+<!--                    <valueMatcher method="regex">^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$</valueMatcher>-->
+<!--                </filter>-->
             </documentFilters>
 
 
@@ -1539,7 +1799,11 @@
                     </handler>
 
 
+
                 </postParseHandlers>
+
+
+
             </importer>
             <!--  Decide what to do with your files by specifying a Committer.  -->
             <committers>
@@ -1548,6 +1812,8 @@
                     <nodes>
                         http://localhost:9200
                     </nodes>
+
+
                     <indexName>norconex2</indexName>
 
                 </committer>

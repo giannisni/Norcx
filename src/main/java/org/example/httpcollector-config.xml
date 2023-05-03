@@ -1,54 +1,1559 @@
-<config>
-    <collector id="WebCrawler">
-        <logsDir>./logs</logsDir>
-        <progressDir>./progress</progressDir>
-        <workDir>./work</workDir>
-        <logsLevel>info</logsLevel>
-            <maxPerRun>-1</maxPerRun>
-        <userAgent>Norconex Web Crawler</userAgent>
-        <defaultIgnoreRobotsTxt>false</defaultIgnoreRobotsTxt>
-        <defaultIgnoreSitemap>false</defaultIgnoreSitemap>
-        <crawlDelay>1000</crawlDelay>
-    </collector>
-    <crawler>
-        <id>example-crawler</id>
-        <startURLs>
-            <url>https://edition.cnn.com/2023/03/23/tech/tiktok-ceo-hearing/index.html</url>
-        </startURLs>
-        <ignoreRobotsTxt>false</ignoreRobotsTxt>
-        <ignoreSitemap>false</ignoreSitemap>
-        <userAgent>Norconex Web Crawler</userAgent>
-        <crawlDelay>1000</crawlDelay>
-        <maxDepth>-1</maxDepth>
-        <validStatusCodes>200,201,202,203,204,205,206,207,208,226,300,301,302,303,304,305,306,307,308</validStatusCodes>
-        <cookiesDisabled>false</cookiesDisabled>
-        <transformer>
-            <id>external_transformer</id>
-            <type>external</type>
-            <command>python3</command>
-            <argument>scripts/sentiment_analysis.py</argument>
-            <inputField>document.content</inputField>
-            <outputField>sentiment_score</outputField>
-            <catchOutput>true</catchOutput>
-            <onError>ignore</onError>
-        </transformer>
-    </crawler>
-    <committer>
-        <id>elasticsearch</id>
-        <type>elasticsearch</type>
-        <url>http://localhost:9200</url>
-        <indexName>your_index_name</indexName>
-        <settings>
-            <index>
-                <number_of_shards>1</number_of_shards>
-                <number_of_replicas>0</number_of_replicas>
-            </index>
-        </settings>
-        <fieldMapping>
-            <field name="reference" target="url" />
-            <field name="title" source="document.title" />
-            <field name="content" source="document.content" />
-            <field name="sentiment_score" source="sentiment_score" />
-        </fieldMapping>
-    </committer>
-</config>
+<!--
+   Copyright 2010-2020 Norconex Inc.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ -->
+<!--  This configuration shows the minimum required and basic recommendations
+     to run a crawler.
+      -->
+<httpcollector id="Minimum Config HTTP Collector">
+    <!--  Decide where to store generated files.  -->
+    <workDir>./examples-output/complex</workDir>
+    <logsDir>./logs</logsDir>
+    <progressDir>./progress</progressDir>
+    <crawlers>
+        <crawler id="athensvoice">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.athensvoice.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="liberal">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.liberal.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="ingr">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.in.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="newsbomb">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.newsbomb.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="newit">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.newsit.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="capital">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.capital.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="parapolitika">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.parapolitika.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="iefimerida">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.iefimerida.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="lifo">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.lifo.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="gazetta">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.gazzetta.gr/</url>
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="protothema">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <url>https://www.protothema.gr/</url>
+                <!--                <url>https://www.enikos.gr/</url>-->
+
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="enikos">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+                <!--                <url>https://www.protothema.gr/</url>-->
+                <url>https://www.enikos.gr/</url>
+
+
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="efsyn">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+
+                <url>https://www.efsyn.gr/</url>
+                <!--                <url>https://www.documentonews.gr</url>-->
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+        <crawler id="documento">
+            <!--  Requires at least one start URL (or urlsFile).
+                       Optionally limit crawling to same protocol/domain/port as
+                       start URLs.  -->
+            <startURLs stayOnDomain="true" stayOnPort="true" stayOnProtocol="true">
+
+
+                <url>https://www.documentonews.gr</url>
+                <!--                <url>https://www.enikos.gr/arthra/o-papadiamantis-tis-christougenniatikis-agalliasis-3/1902892/</url>-->
+
+            </startURLs>
+            <maxDepth>5</maxDepth>
+
+
+            <numThreads>4</numThreads>
+            <sitemapResolver ignore="true"/>
+            <!--  Be as nice as you can to sites you crawl.  -->
+            <delay default="5 seconds"/>
+            <documentFilters>
+
+                <filter
+                        class="com.norconex.collector.core.filter.impl.ExtensionReferenceFilter"  onMatch="exclude">
+                    png,jpg,jpeg,gif,css,js,ico,svg,woff,woff2,ttf,eot,otf,xml,txt,doc,docx,pdf,mp4,mp3,avi,flv,wmv,zip,rar,7z,exe,apk,iso,ap
+                </filter>
+            </documentFilters>
+
+
+
+
+            <!--  Document importing  -->
+            <importer>
+
+                <preParseHandlers>
+                    <handler class="com.norconex.importer.handler.tagger.impl.ScriptTagger">
+                        <script><![CDATA[
+                        var referenceField = "document.reference";
+                        var domainField = "domain.url";
+                        var reference = metadata.getString(referenceField);
+
+                        if (reference) {
+                          var domain = new java.net.URL(reference).getProtocol() + "://" + new java.net.URL(reference).getHost();
+                          metadata.setString(domainField, domain);
+                        }
+                      ]]>
+                        </script>
+                    </handler>
+                    <!--                    <handler class="com.norconex.importer.handler.tagger.impl.RegexTagger">-->
+                    <!--                        <fieldMatcher>-->
+                    <!--                            temp.url-->
+                    <!--                        </fieldMatcher>-->
+                    <!--                        <pattern-->
+                    <!--                                toField="domain.url"-->
+                    <!--                                valueGroup="1">-->
+                    <!--                            (https?://[^/]+)-->
+                    <!--                        </pattern>-->
+                    <!--                    </handler>-->
+                </preParseHandlers>
+
+                <postParseHandlers>
+                    <!-- Keep only specific fields -->
+
+                    <handler class="com.norconex.importer.handler.transformer.impl.ExternalTransformer">
+                        <restrictTo>
+                            <fieldMatcher method="csv">content</fieldMatcher>
+                            <valueMatcher method="regex">.*</valueMatcher>
+                        </restrictTo>
+                        <command>python3 scripts/sentiment_analysis.py</command>
+                        <metadata inputFormat="properties" outputFormat="properties">
+                            <pattern toField="sentiment_score" onSet="replace">
+                                (.*)
+                            </pattern>
+                        </metadata>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger" fromField="article:modified_time" fromLocale="el_GR"   toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <handler class="com.norconex.importer.handler.tagger.impl.DateFormatTagger"     onSet="replace"  fromField="article:published_time" fromLocale="el_GR"  toLocale="el_GR"
+                             toField="published_date" toFormat="yyyy-MM-dd'T'HH:mm:ss" >
+                        <fromFormat>yyyy-MM-dd'T'HH:mm:ssXXX</fromFormat>
+                    </handler>
+
+                    <!--                    <handler class="com.norconex.importer.handler.transformer.impl.ReplaceTransformer">-->
+                    <!--                        <fieldMatcher method="csv">temp_published_date</fieldMatcher>-->
+                    <!--                        <replacePattern><![CDATA[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})]]></replacePattern>-->
+                    <!--                        <replacement><![CDATA[$1]]></replacement>-->
+                    <!--                        <toField>published_date_single</toField>-->
+                    <!--                    </handler>-->
+                    <handler class="KeepOnlyTagger">
+                        <fieldMatcher method="csv">published_date_single,Date,content,title,keywords,description,document.reference,sentiment_score,published_date,published_date2,domain.url,temp.url</fieldMatcher>
+                    </handler>
+
+
+                </postParseHandlers>
+            </importer>
+            <!--  Decide what to do with your files by specifying a Committer.  -->
+            <committers>
+                <committer
+                        class="com.norconex.committer.elasticsearch.ElasticsearchCommitter">
+                    <nodes>
+                        http://localhost:9200
+                    </nodes>
+                    <indexName>norconex2</indexName>
+
+                </committer>
+
+            </committers>
+        </crawler>
+
+    </crawlers>
+</httpcollector>
