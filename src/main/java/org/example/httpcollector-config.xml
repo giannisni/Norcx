@@ -35,7 +35,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -144,7 +144,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -253,7 +253,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -362,7 +362,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -471,7 +471,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -580,7 +580,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -689,7 +689,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -798,7 +798,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -907,7 +907,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -1016,7 +1016,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -1127,7 +1127,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -1238,7 +1238,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -1348,7 +1348,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>
@@ -1458,7 +1458,7 @@
             <maxDepth>5</maxDepth>
 
 
-            <numThreads>4</numThreads>
+            <numThreads>2</numThreads>
             <sitemapResolver ignore="true"/>
             <!--  Be as nice as you can to sites you crawl.  -->
             <delay default="5 seconds"/>

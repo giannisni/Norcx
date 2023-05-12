@@ -7,7 +7,7 @@ import com.norconex.commons.lang.xml.XML;
 import java.io.File;
 import java.io.IOException;
 
-public class WebCrawler {
+    public class WebCrawler {
 
     public static void main(String[] args) {
         HttpCollectorConfig config = new HttpCollectorConfig();

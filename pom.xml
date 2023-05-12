@@ -9,13 +9,28 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>3.1.1</version>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version> <!-- Update the plugin version -->
+
         <configuration>
-          <appendAssemblyId>false</appendAssemblyId>
+          <source>11</source>
+          <target>11</target>
+
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.3.0</version> <!-- Update the plugin version -->
+        <configuration>
           <descriptorRefs>
             <descriptorRef>jar-with-dependencies</descriptorRef>
           </descriptorRefs>
+          <archive>
+            <manifest>
+              <mainClass>org.example.WebCrawler</mainClass>
+            </manifest>
+          </archive>
         </configuration>
         <executions>
           <execution>
@@ -27,17 +42,11 @@
           </execution>
         </executions>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>11</source>
-          <target>11</target>
-        </configuration>
-      </plugin>
+
+
     </plugins>
   </build>
-  <packaging>jar</packaging>
+    <packaging>jar</packaging>
 
   <name>Norcx</name>
   <url>http://maven.apache.org</url>
@@ -112,11 +121,11 @@
 
 
     <!-- https://mvnrepository.com/artifact/com.norconex.jef/norconex-jef -->
-    <dependency>
-      <groupId>com.norconex.jef</groupId>
-      <artifactId>norconex-jef</artifactId>
-      <version>5.0.0-M1</version>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>com.norconex.jef</groupId>-->
+<!--      <artifactId>norconex-jef</artifactId>-->
+<!--      <version>5.0.0-M1</version>-->
+<!--    </dependency>-->
 
     <!-- https://mvnrepository.com/artifact/com.norconex.commons/norconex-commons-lang -->
     <dependency>
